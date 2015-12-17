@@ -38,7 +38,7 @@
 		</style>
 	</head>
 	<body>
-		<div id="head">
+		<div id="head" style="display:none;">
 			WipEout (PSX) – Model Viewer 
 			&nbsp; Scene: <select id="sceneSelect"></select>
 			&nbsp; Camera: <a href="#" id="freeCam">Free</a> / <a href="#" id="flyCam">Fly-Through</a>
@@ -50,16 +50,20 @@
 				</a>
 			</div>
 		</div>
-		<div id="container"></div>
+		<div id="container" ondblclick="nextScene()"></div>
 
 		<script src="three.js"></script>
 		<script src="orbit-controls.js"></script>
 		<script src="js-struct.js"></script>
-		<script src="HermiteCurve3.js"></script>
 		<script src="wipeout.js"></script>
-
+		<script src="StereoEffect.js"></script>
+		<script src="VREffect.js"></script>
+		<script src="VRControls.js"></script>
+		<script src="DeviceOrientationControls.js"></script>
+		<script src="HermiteCurve3.js"></script>
+		
 		<script>
-			var viewer = new Wipeout('container', window.innerWidth, window.innerHeight);
+			var viewer = new Wipeout('container', window.innerWidth, window.innerHeight, VRready() );
 
 			// Build the Scene Selection Dropdown
 			var loadingFunctions = [];
@@ -99,9 +103,9 @@
 				}).bind(null, track));
 			}
 
-			addOption(groupWipeout, '', function(){});
+			//addOption(groupWipeout, '', function(){});
 
-			addOption(groupWipeout, 'Ships', function(viewer){
+			/* addOption(groupWipeout, 'Ships', function(viewer){
 				viewer.clear();
 				viewer.loadBinaries({
 					textures: 'WIPEOUT/COMMON/ALLSH.CMP',
@@ -122,9 +126,9 @@
 					textures: 'WIPEOUT/COMMON/PILOT.CMP',
 					objects: 'WIPEOUT/COMMON/PILOT.PRM'
 				}, function(files) { viewer.createScene(files, { space:12800}); });
-			});
+			}); */
 
-			addOption(groupWipeout, '', function(){});
+			//addOption(groupWipeout, '', function(){});
 
 
 			// WipEout 2097/xl
@@ -139,9 +143,9 @@
 				}).bind(null, track));
 			}
 
-			addOption(groupWipeout2097, '', function(){});
+			//addOption(groupWipeout2097, '', function(){});
 
-			addOption(groupWipeout2097, 'Ships', function(viewer){
+			/* addOption(groupWipeout2097, 'Ships', function(viewer){
 				viewer.clear();
 				viewer.loadBinaries({
 					textures: 'WIPEOUT2/COMMON/TERRY.CMP',
@@ -169,7 +173,7 @@
 				viewer.loadBinaries({
 					objects: 'WIPEOUT2/COMMON/JUNE.PRM'
 				}, function(files) { viewer.createScene(files, {scale: 16, space:20000}); });
-			});
+			}); */
 
 
 
@@ -198,10 +202,88 @@
 				music.pause();
 				ev.preventDefault();
 			}, true);
+			
+			window.addEventListener("orientationchange", function() {
+				// Announce the new orientation number
+			if(window.orientation==0 || window.orientation==180){
+				nextScene();
+			}
+			if(window.orientation==90 || window.orientation==-90){
+				fullscreenVR();
+				fullscreenAndroid();
+			}
+			}, false);
 
 
-			// Load the first scene in our list
+// Load the first scene in our list
 			loadingFunctions[0](viewer);
+
+
+			//
+			
+			document.getElementById('container').addEventListener('click', function(ev){
+				
+				if (viewer.activeCameraMode == 'orbit'){
+					viewer.activeCameraMode = 'fly';
+				}else{viewer.activeCameraMode = 'orbit';}
+					//alert (viewer.activeCameraMode)
+					//ev.preventDefault();
+				
+				if( isAndroid() ){
+					fullscreenAndroid();
+				}else if ( VRready () ) {
+					fullscreenVR();
+				}
+			}, true);
+			
+			function nextScene(){
+				//randomnumber between 0 and 22
+				var randomTrack=Math.floor((Math.random() * 22) + 0);
+				loadingFunctions[randomTrack](viewer);
+			}
+
+			function fullscreenAndroid() {
+				//TODO > Improve a better control activate/deactivate http://www.sitepoint.com/introducing-screen-orientation-api/
+				var container = document.documentElement;
+
+				if (container.requestFullscreen) {
+					container.requestFullscreen();
+				} else if (container.msRequestFullscreen) { 
+					container.msRequestFullscreen();
+				} else if (container.mozRequestFullScreen) {
+					container.mozRequestFullScreen();
+				} else if (container.webkitRequestFullscreen) {
+					container.webkitRequestFullscreen();
+				}
+
+				if ('orientation' in screen) {
+					// API supported, yeah!
+					screen.orientation.lock('landscape');               
+				} else {
+					// API not supported :(
+				}
+
+				document.addEventListener('webkitfullscreenchange mozfullscreenchange fullscreenchange msfullscreenchange',function(){
+					var fullStatus = false;
+					if (container.requestFullscreen) {
+						fullStatus = document.fullscreen;
+					} else if (container.msRequestFullscreen) { 
+						fullStatus = document.msFullscreenElement;
+					} else if (container.mozRequestFullScreen) {
+						fullStatus = document.mozFullScreen;
+					} else if (container.webkitRequestFullscreen) {
+						fullStatus = document.webkitIsFullScreen;
+					}
+
+				});
+			}
+
+			function isAndroid	(){ return navigator.userAgent.match(/(Android)/) };
+			function VRready (){ return navigator.mozGetVRDevices || navigator.getVRDevices };
+
+			function fullscreenVR (){
+				viewer.vrEffect.setFullScreen( true );
+			}
 		</script>
 	</body>
 </html>

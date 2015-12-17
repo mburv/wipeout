@@ -1,8 +1,24 @@
 "use strict"
-var Wipeout = function(containerId, width, height){
+var Wipeout = function(containerId, width, height, vrReady){
+
+	this.vrReady = vrReady;
+
 	this.renderer = new THREE.WebGLRenderer( { antialias: true } );
 	this.renderer.setSize( width, height );
-	this.renderer.setClearColor( 0x000000 );
+	this.renderer.setClearColor( 0x111111 );
+
+	this.stereoEffect = new THREE.StereoEffect(this.renderer);
+	this.stereoEffect.setSize(window.innerWidth, window.innerHeight);
+
+	if (this.vrReady){
+		this.vrEffect = new THREE.VREffect(this.renderer);	
+		this.vrEffect.setSize(window.innerWidth, window.innerHeight);
+	}else{
+		this.stereoEffect = new THREE.StereoEffect(this.renderer);
+		this.stereoEffect.setSize(window.innerWidth, window.innerHeight);
+	}
+	
+
 	this.container = document.getElementById( containerId );
 	this.container.appendChild( this.renderer.domElement );
 	this.width = width;
@@ -19,15 +35,6 @@ Wipeout.prototype.clear = function() {
 	this.scene = new THREE.Scene();
 	this.sprites = [];
 
-	// Add Camera and controls for orbit
-	this.camera = new THREE.PerspectiveCamera( 45, this.width / this.height, 64, 2048576 );
-	this.camera.position.set( 0, 10000, 50000 );
-	this.camera.rotation.order = 'YZX';
-
-	this.controls = new THREE.OrbitControls( this.camera, this.renderer.domElement );
-	this.controls.damping = 0.2;
-	this.controls.zoomSpeed = 2;
-
 	// Add Camera for fly through
 	this.splineCamera = new THREE.PerspectiveCamera( 84, window.innerWidth / window.innerHeight, 64, 2048576 );
 	this.splineCamera.currentLookAt = new THREE.Vector3(0,0,0);
@@ -41,9 +48,37 @@ Wipeout.prototype.clear = function() {
 	
 	this.startTime = Date.now();
 	this.ticks = 0;
+	
+	//while (true) {
+    //	var cameraX = this.splineCamera.position.x;
+	//	var cameraY = this.splineCamera.position.y;
+	//	var cameraZ = this.splineCamera.position.z;
+	//}
+	
+	// Add Camera and controls for orbit
+	this.camera = new THREE.PerspectiveCamera( 84, window.innerWidth / window.innerHeight, 64, 2048576 );
+	//this.camera.position.set( 0, 10000, 50000 );
+	this.camera.rotation.order = 'YZX';
+
+	this.controls = new THREE.OrbitControls( this.camera, this.renderer.domElement );
+	this.controls.damping = 0.2;
+	this.controls.zoomSpeed = 2;
+	
+	//implement head tracking
+	//window.addEventListener('deviceorientation', setOrientationControls, true);
+	function setOrientationControls(e) {
+    	if (!e.alpha) {
+     	 return;
+    	}
+	};
+	this.controls = new THREE.DeviceOrientationControls(this.camera, true);
+  	this.controls.connect();
+  	this.controls.update();
+	//window.removeEventListener('deviceorientation', setOrientationControls, true);
 };
 
 Wipeout.prototype.resize = function() {
+
 	this.width = window.innerWidth;
 	this.height = window.innerHeight;
 	
@@ -53,7 +88,11 @@ Wipeout.prototype.resize = function() {
 	this.splineCamera.aspect = this.width / this.height;
 	this.splineCamera.updateProjectionMatrix();	
 
-	this.renderer.setSize( window.innerWidth, window.innerHeight );
+		if (this.vrReady){
+		this.vrEffect.setSize( window.innerWidth, window.innerHeight );
+	}else{
+		this.stereoEffect.setSize( window.innerWidth, window.innerHeight );
+	}
 }
 
 Wipeout.prototype.animate = function() {
@@ -70,25 +109,50 @@ Wipeout.prototype.animate = function() {
 	
 		var elapsedTime = time - this.startTime;
 		var elapsedTicks = elapsedTime / 1000 * 60;
-
+		
 		// Fixed time step loop (60hz)
 		while(this.ticks < elapsedTicks) {
 		
 			this.updateSplineCamera();
 			this.ticks++;
+			this.camCoords(this.splineCamera.position.x, this.splineCamera.position.y, this.splineCamera.position.z);
 		}
 		
 		this.rotateSpritesToCamera(this.splineCamera);
-		this.renderer.render(this.scene, this.splineCamera);
+		if (this.vrReady){
+			this.vrEffect.render (this.scene, this.splineCamera);
+		}else{
+			this.stereoEffect.render (this.scene, this.splineCamera);
+		}
 	}
 
 	// Default Orbit camera
 	else {
 		this.controls.update();
 		this.rotateSpritesToCamera(this.camera);
-		this.renderer.render( this.scene, this.camera );
+		if (this.vrReady){
+			this.vrEffect.render (this.scene, this.camera);
+		}else{
+			this.stereoEffect.render (this.scene, this.camera);
+		}
+		//this.renderer.render( this.scene, this.camera );
 	}
+	
 };
+
+		//var camPosition = this.camCoords();
+	//if (this.activeCameraMode == 'orbit') {
+		//alert ("orbit active");
+		//this.camera.position.set( camPosition[0], camPosition[1], camPosition[2] );
+	//}
+
+Wipeout.prototype.camCoords = function (camX, camY, camZ) {
+	var cameraX=camX;
+	var cameraY=camY;
+	var cameraZ=camZ;
+	return [cameraX, cameraY, cameraZ];
+	console.log (cameraX);
+}
 
 Wipeout.prototype.updateSplineCamera = function() {
 	var damping = 0.90;
@@ -124,6 +188,7 @@ Wipeout.prototype.updateSplineCamera = function() {
 		this.splineCamera.position.clone().sub(this.splineCamera.currentLookAt).normalize(),
 		this.splineCamera.roll * 0.25
 	);
+	this.camera.position.set( this.splineCamera.position.x, this.splineCamera.position.y, this.splineCamera.position.z );
 }
 
 
