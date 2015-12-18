@@ -28,6 +28,8 @@ Specific to VR
 
  - Fly through camera continues to move while head tracking active
 
+Known previously
+
  - Two unknown polygon types that are currently ignored: 0x00 (possibly padding?) and 0x0A which might be sprite-like - alpha texture, non rotated. The squiggly lights in the jump pits on Karbonis are missing; could be 0x0A?!.
  
  - The underside of the ships for WipEout have the wrong textures or UV coordinates
